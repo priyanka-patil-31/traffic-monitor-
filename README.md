@@ -11,21 +11,7 @@ An Android application built with Kotlin and Jetpack Compose (Material 3), conve
 2. Click **Export as ZIP** or **Download Project**.
 3. Extract the downloaded ZIP anywhere on your system and open it directly in **Android Studio**.
 
-### Option 2: Push Directly to GitHub via Git CLI
-To push this repository to your GitHub account:
 
-```bash
-# 1. Initialize git repository
-git init
-
-# 2. Add all files (.gitignore already excludes build artifacts)
-git add .
-
-# 3. Create your initial commit
-git commit -m "feat: AI Traffic Monitoring and Violation Detection Android App"
-
-# 4. Set main branch
-git branch -M main
 
 # 5. Link to your GitHub remote repository
 git remote add origin https://github.com/<YOUR_GITHUB_USERNAME>/<YOUR_REPOSITORY_NAME>.git
