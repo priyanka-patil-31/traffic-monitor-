@@ -1,0 +1,6 @@
+{
+  "name": "Traffic Monitor",
+  "description": "AI-based real-time traffic monitoring and violation detection dashboard",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

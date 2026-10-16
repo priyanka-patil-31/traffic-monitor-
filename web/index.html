@@ -1,0 +1,592 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b1018">
+  <title>Traffic Eye — City Operations</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b1018;
+      --panel: #111925;
+      --panel-2: #151f2d;
+      --line: #202c3a;
+      --muted: #8492a6;
+      --text: #edf3fb;
+      --blue: #64a5ff;
+      --cyan: #58d6e5;
+      --green: #39d6a0;
+      --amber: #f4b45d;
+      --red: #ff6d79;
+      --radius: 13px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-width: 320px;
+      background: var(--bg);
+      color: var(--text);
+      font: 14px/1.5 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      letter-spacing: -.01em;
+    }
+    button, input { font: inherit; }
+    button { color: inherit; }
+    .app { min-height: 100vh; }
+    .sidebar {
+      width: 244px;
+      position: fixed;
+      inset: 0 auto 0 0;
+      z-index: 5;
+      display: flex;
+      flex-direction: column;
+      padding: 25px 16px 18px;
+      border-right: 1px solid var(--line);
+      background: #0e151f;
+    }
+    .brand { display: flex; align-items: center; gap: 11px; padding: 0 9px 29px; }
+    .brand-mark {
+      width: 37px; height: 37px; display: grid; place-items: center;
+      border-radius: 11px; color: #07141a;
+      background: linear-gradient(145deg, #65e1df, #5895ff);
+      box-shadow: 0 7px 24px #54bfd833;
+    }
+    .brand-mark svg { width: 21px; height: 21px; }
+    .brand-name { font-size: 15px; font-weight: 750; letter-spacing: -.03em; }
+    .brand-sub { color: var(--muted); font-size: 10px; letter-spacing: .11em; text-transform: uppercase; margin-top: 1px; }
+    .nav-label { color: #68778a; padding: 0 11px; margin: 6px 0 10px; font-size: 10px; font-weight: 700; letter-spacing: .13em; text-transform: uppercase; }
+    .nav { display: grid; gap: 5px; }
+    .nav button {
+      width: 100%; border: 0; background: transparent; cursor: pointer;
+      border-radius: 9px; display: flex; align-items: center; gap: 12px;
+      text-align: left; padding: 10px 11px; color: #9ba9ba; font-size: 12px; font-weight: 550;
+      transition: .18s ease;
+    }
+    .nav button:hover { color: var(--text); background: #17212d; }
+    .nav button.active { color: #83b8ff; background: #172a40; box-shadow: inset 2px 0 #64a5ff; }
+    .nav svg { width: 17px; height: 17px; opacity: .9; }
+    .nav-badge { margin-left: auto; color: #ff9aa2; background: #46252d; border-radius: 20px; padding: 1px 7px; font-size: 10px; }
+    .sidebar-bottom { margin-top: auto; }
+    .network-card { border: 1px solid var(--line); background: #111a26; border-radius: 11px; padding: 12px; }
+    .network-title { display: flex; justify-content: space-between; align-items: center; font-size: 11px; font-weight: 650; }
+    .network-detail { font-size: 10px; color: var(--muted); margin: 4px 0 11px; }
+    .network-foot { display: flex; justify-content: space-between; color: #9ba9ba; font-size: 10px; }
+    .online-dot { display: inline-block; width: 7px; height: 7px; background: var(--green); border-radius: 50%; margin-right: 6px; box-shadow: 0 0 10px #39d6a088; }
+    .operator { display: flex; align-items: center; gap: 10px; padding: 17px 8px 0; }
+    .avatar { display: grid; place-items: center; border-radius: 50%; width: 31px; height: 31px; background: #293b51; color: #b8d5ff; font-weight: 700; font-size: 11px; }
+    .operator-name { font-size: 11px; font-weight: 650; }
+    .operator-role { font-size: 10px; color: var(--muted); }
+    .main { margin-left: 244px; min-height: 100vh; }
+    .topbar {
+      position: sticky; top: 0; z-index: 4; height: 61px;
+      display: flex; align-items: center; justify-content: space-between; gap: 14px;
+      padding: 0 32px; border-bottom: 1px solid var(--line);
+      background: #0d141ded; backdrop-filter: blur(16px);
+    }
+    .crumb { color: var(--muted); font-size: 11px; }
+    .crumb strong { color: #dce6f2; font-weight: 600; }
+    .top-actions { display: flex; align-items: center; gap: 16px; }
+    .icon-button { position: relative; display: grid; place-items: center; width: 32px; height: 32px; border: 1px solid transparent; background: transparent; border-radius: 8px; color: #9cabbc; cursor: pointer; }
+    .icon-button:hover { background: #182330; color: white; }
+    .icon-button svg { width: 17px; height: 17px; }
+    .notification-dot { position: absolute; width: 6px; height: 6px; background: var(--red); border-radius: 50%; right: 6px; top: 5px; border: 1px solid var(--bg); }
+    .top-divider { height: 23px; border-left: 1px solid var(--line); }
+    .date-display { color: #9eabba; font-size: 11px; font-variant-numeric: tabular-nums; }
+    .content { max-width: 1600px; margin: 0 auto; padding: 28px 32px 40px; }
+    .page-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; margin-bottom: 23px; }
+    .eyebrow { color: var(--cyan); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .14em; margin-bottom: 5px; }
+    h1 { font-size: 23px; line-height: 1.25; margin: 0; font-weight: 680; letter-spacing: -.035em; }
+    .subtitle { margin: 6px 0 0; color: var(--muted); font-size: 12px; }
+    .heading-actions { display: flex; align-items: center; gap: 9px; }
+    .button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 8px 12px; border: 1px solid #2b394a; background: #151f2c; border-radius: 8px; color: #d7e1ed; font-size: 11px; font-weight: 600; cursor: pointer; transition: .16s; }
+    .button:hover { border-color: #4b647d; background: #1a2838; }
+    .button svg { width: 14px; height: 14px; }
+    .button.primary { background: #367ee7; border-color: #367ee7; color: white; box-shadow: 0 5px 15px #367ee733; }
+    .button.primary:hover { background: #4b8ff1; }
+    .button.danger { color: #ff9ca4; border-color: #4e3038; background: #291a22; }
+    .button.small { padding: 6px 9px; font-size: 10px; }
+    .overview-strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 13px; margin-bottom: 18px; }
+    .metric {
+      min-height: 105px; position: relative; overflow: hidden;
+      border: 1px solid var(--line); border-radius: var(--radius); padding: 15px 16px;
+      background: linear-gradient(130deg, #131d29, #101823);
+    }
+    .metric:after { content: ""; position: absolute; right: -25px; top: -36px; width: 100px; height: 100px; border-radius: 50%; background: var(--tint); opacity: .05; }
+    .metric-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+    .metric-label { color: #a5b1c0; font-size: 11px; font-weight: 550; }
+    .metric-icon { display: grid; place-items: center; width: 27px; height: 27px; border: 1px solid color-mix(in srgb, var(--accent) 24%, transparent); border-radius: 8px; color: var(--accent); background: color-mix(in srgb, var(--accent) 9%, transparent); }
+    .metric-icon svg { width: 14px; height: 14px; }
+    .metric-bottom { display: flex; align-items: baseline; gap: 9px; margin-top: 8px; }
+    .metric-value { font-size: 25px; letter-spacing: -.045em; font-weight: 700; line-height: 1; }
+    .metric-change { font-size: 10px; color: var(--green); }
+    .metric-note { color: #7f8da0; font-size: 10px; margin-top: 6px; }
+    .live-layout { display: grid; grid-template-columns: minmax(0, 1.75fr) minmax(260px, .8fr); gap: 15px; align-items: stretch; }
+    .panel { border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); overflow: hidden; }
+    .panel-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+    .panel-title { display: flex; align-items: center; gap: 9px; font-weight: 650; font-size: 12px; }
+    .panel-title svg { width: 15px; height: 15px; color: var(--cyan); }
+    .panel-subtitle { color: var(--muted); font-size: 10px; margin-top: 3px; }
+    .camera-select { border: 1px solid #293748; border-radius: 7px; background: #111a25; padding: 6px 27px 6px 9px; color: #d2dce9; font-size: 10px; outline: none; max-width: 220px; }
+    .video { min-height: 315px; height: clamp(315px, 31vw, 440px); position: relative; overflow: hidden; background: #081019; }
+    .video:before { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, #07101926 0%, #08111a08 42%, #06101bd9 100%); z-index: 1; pointer-events: none; }
+    .video-image { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; filter: brightness(.7) saturate(.8); transition: filter .35s, transform 8s linear; }
+    .video.streaming .video-image { filter: brightness(.82) saturate(.9); transform: scale(1.035); }
+    .video.paused .video-image { filter: brightness(.58) grayscale(.38); }
+    .video-grid { position: absolute; inset: 12% 16% 7%; z-index: 2; opacity: .45; background: linear-gradient(110deg, transparent 39.5%, #59d6e533 39.8%, transparent 40.2%), linear-gradient(70deg, transparent 59.5%, #59d6e533 59.8%, transparent 60.2%); }
+    .video-top { position: absolute; z-index: 3; top: 14px; left: 15px; right: 15px; display: flex; justify-content: space-between; align-items: flex-start; }
+    .live-tag, .video-code { display: inline-flex; align-items: center; gap: 6px; border: 1px solid #ffffff20; background: #06101bb8; backdrop-filter: blur(8px); border-radius: 5px; padding: 5px 8px; font-size: 9px; font-weight: 700; letter-spacing: .08em; }
+    .live-tag { color: #ff9ca4; }
+    .live-tag .online-dot { width: 6px; height: 6px; background: var(--red); box-shadow: 0 0 8px #ff6d79; }
+    .video-code { color: #e5edf6; font-weight: 500; letter-spacing: .04em; }
+    .track { position: absolute; z-index: 2; border: 1px solid var(--cyan); width: 8%; height: 17%; left: 30%; top: 44%; border-radius: 2px; opacity: .8; }
+    .track:before { content: "CAR · 98%"; position: absolute; left: -1px; top: -17px; padding: 2px 4px; white-space: nowrap; color: #041319; background: var(--cyan); font-size: 8px; font-weight: 700; }
+    .track.t2 { width: 10%; height: 20%; left: 61%; top: 48%; border-color: var(--red); }
+    .track.t2:before { content: "SPEED · 108 km/h"; color: #fff; background: #d64256; }
+    .track.t3 { width: 6%; height: 13%; left: 48%; top: 35%; }
+    .track.t3:before { content: "AUTO · 95%"; }
+    .video-bottom { position: absolute; z-index: 3; bottom: 13px; left: 14px; right: 14px; display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
+    .feed-info { color: #eaf2fa; font-size: 11px; font-weight: 650; }
+    .feed-location { color: #bcc8d5; font-weight: 400; font-size: 9px; margin-top: 2px; }
+    .video-controls { display: flex; gap: 6px; }
+    .video-controls .button { background: #07111dcf; backdrop-filter: blur(6px); border-color: #ffffff30; padding: 7px 9px; font-size: 10px; }
+    .video-controls .button:hover { background: #142334ed; }
+    .stream-stats { display: flex; gap: 18px; padding: 10px 14px; border-top: 1px solid var(--line); color: #8796a8; font-size: 9px; }
+    .stream-stats strong { color: #dbe5ef; font-weight: 600; margin-left: 4px; }
+    .side-stack { display: grid; grid-template-rows: auto 1fr; gap: 15px; }
+    .signal-card { padding-bottom: 13px; }
+    .signal-body { padding: 14px 16px 4px; }
+    .junction { color: #e6eef8; font-weight: 600; font-size: 11px; }
+    .junction-sub { color: var(--muted); font-size: 9px; margin-top: 2px; }
+    .phase-row { display: flex; align-items: center; gap: 12px; margin-top: 15px; padding: 11px; border: 1px solid var(--line); border-radius: 9px; background: #0e1620; }
+    .signal-light { display: flex; gap: 4px; padding: 5px; background: #202a36; border-radius: 20px; }
+    .lamp { width: 9px; height: 9px; border-radius: 50%; background: #34404d; }
+    .lamp.green.active { background: var(--green); box-shadow: 0 0 10px #39d6a088; }
+    .lamp.red.active { background: var(--red); box-shadow: 0 0 10px #ff6d7988; }
+    .lamp.amber.active { background: var(--amber); box-shadow: 0 0 10px #f4b45d88; }
+    .phase-label { font-size: 10px; font-weight: 600; }
+    .phase-caption { font-size: 9px; color: var(--muted); margin-top: 2px; }
+    .countdown { margin-left: auto; color: var(--green); font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .emergency-button { width: 100%; margin-top: 10px; padding: 8px 10px; }
+    .emergency-button.active { border-color: #6b3739; background: #3b2027; color: #ff939b; }
+    .activity-list { padding: 2px 15px 8px; }
+    .activity-item { display: grid; grid-template-columns: 27px 1fr auto; gap: 9px; align-items: center; padding: 10px 0; border-bottom: 1px solid #1b2632; }
+    .activity-item:last-child { border-bottom: 0; }
+    .activity-icon { display: grid; place-items: center; width: 27px; height: 27px; border-radius: 8px; color: var(--red); background: #39222a; }
+    .activity-icon.blue { color: var(--blue); background: #1c2e45; }
+    .activity-icon svg { width: 13px; height: 13px; }
+    .activity-title { font-size: 10px; color: #dbe4ee; font-weight: 600; }
+    .activity-meta { color: var(--muted); font-size: 9px; margin-top: 2px; }
+    .activity-time { color: #8290a1; font-size: 9px; align-self: start; padding-top: 3px; }
+    .lower-grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(270px, .85fr); gap: 15px; margin-top: 15px; }
+    .table-wrap { overflow-x: auto; }
+    table { border-collapse: collapse; width: 100%; white-space: nowrap; }
+    th { text-align: left; font-size: 9px; color: #7f8ea0; font-weight: 600; padding: 10px 14px; border-bottom: 1px solid var(--line); text-transform: uppercase; letter-spacing: .08em; }
+    td { padding: 11px 14px; border-bottom: 1px solid #1b2531; font-size: 10px; color: #bdc9d7; }
+    tbody tr:last-child td { border-bottom: 0; }
+    .plate { color: #e6edf5; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 10px; font-weight: 650; letter-spacing: .025em; }
+    .type-pill, .status-pill { display: inline-block; border-radius: 20px; padding: 3px 7px; font-size: 9px; font-weight: 600; }
+    .type-pill.speed { background: #41262b; color: #ff939b; }
+    .type-pill.signal { background: #433423; color: #f5c077; }
+    .type-pill.helmet { background: #223542; color: #82cbe3; }
+    .type-pill.wrong { background: #302b4a; color: #b8aaff; }
+    .status-pill.pending { color: #f1bc6a; background: #3a3021; }
+    .status-pill.issued { color: #84c6ff; background: #203247; }
+    .status-pill.paid { color: #72dab5; background: #1d382f; }
+    .status-pill.flagged { color: #ff969e; background: #402329; }
+    .table-action { border: 0; background: transparent; color: #91bfff; cursor: pointer; font-size: 10px; padding: 4px; }
+    .table-action:hover { color: white; }
+    .view-all { color: #8bbcff; font-size: 10px; text-decoration: none; cursor: pointer; }
+    .view-all:hover { color: white; }
+    .density { padding: 15px 16px 16px; }
+    .density-header { display: flex; justify-content: space-between; align-items: flex-start; }
+    .density-title { font-size: 11px; font-weight: 650; }
+    .density-sub { color: var(--muted); font-size: 9px; margin-top: 3px; }
+    .density-value { color: var(--amber); font-size: 10px; font-weight: 650; }
+    .density-number { font-size: 24px; font-weight: 700; margin-top: 16px; }
+    .density-number small { color: var(--muted); font-size: 10px; font-weight: 500; }
+    .bar-chart { display: flex; align-items: end; gap: 7px; height: 54px; border-bottom: 1px solid #283342; margin: 8px 0 9px; }
+    .bar-chart i { flex: 1; display: block; min-height: 5px; border-radius: 3px 3px 0 0; background: linear-gradient(180deg, #60c6d7, #3375b8); opacity: .8; }
+    .chart-labels { display: flex; justify-content: space-between; color: #758397; font-size: 8px; }
+    .density-footer { display: flex; justify-content: space-between; margin-top: 13px; padding-top: 11px; border-top: 1px solid var(--line); font-size: 9px; color: var(--muted); }
+    .density-footer strong { color: #dce6f1; font-weight: 600; }
+    .subpage { display: none; }
+    .subpage.active { display: block; }
+    .subpage .panel { margin-bottom: 14px; }
+    .summary-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 15px; }
+    .summary-box { padding: 14px 16px; border: 1px solid var(--line); border-radius: 11px; background: var(--panel); }
+    .summary-box span { display: block; color: var(--muted); font-size: 10px; }
+    .summary-box strong { display: block; font-size: 21px; margin-top: 4px; }
+    .filters { display: flex; gap: 7px; padding: 12px 14px; overflow-x: auto; }
+    .filter-chip { white-space: nowrap; border-radius: 20px; padding: 6px 10px; border: 1px solid #293647; background: #111b27; color: #9ba9ba; font-size: 10px; cursor: pointer; }
+    .filter-chip.active { color: #9ac6ff; background: #1b3048; border-color: #365879; }
+    .search { width: min(350px, 100%); border: 1px solid #293647; border-radius: 8px; background: #0e1620; color: var(--text); outline: none; padding: 9px 11px; font-size: 11px; }
+    .search:focus { border-color: #4c88ca; }
+    .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 14px; border-bottom: 1px solid var(--line); }
+    .toolbar p { color: var(--muted); font-size: 10px; margin: 0; }
+    .signal-page-grid { display: grid; grid-template-columns: 1.2fr .8fr; gap: 15px; }
+    .signal-map { min-height: 280px; margin: 15px; display: grid; place-items: center; border: 1px solid #273646; border-radius: 10px; background: radial-gradient(ellipse at center, #1a2a34, #101a24 68%); position: relative; }
+    .road-h, .road-v { position: absolute; background: #283541; }
+    .road-h { height: 48px; width: 100%; top: calc(50% - 24px); border-top: 1px dashed #596878; border-bottom: 1px dashed #596878; }
+    .road-v { width: 48px; height: 100%; left: calc(50% - 24px); border-left: 1px dashed #596878; border-right: 1px dashed #596878; }
+    .intersection { z-index: 1; width: 93px; height: 93px; border: 1px solid #ffffff22; border-radius: 7px; background: #17232b; display: grid; place-items: center; }
+    .intersection .signal-light { transform: rotate(90deg); }
+    .corridor-panel { padding: 16px; }
+    .corridor-panel h3 { margin: 0; font-size: 13px; }
+    .corridor-panel p { color: var(--muted); font-size: 10px; line-height: 1.6; }
+    .settings-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+    .settings-card { padding: 17px; }
+    .settings-card h3 { margin: 0 0 5px; font-size: 12px; }
+    .settings-card p { color: var(--muted); font-size: 10px; margin: 0; line-height: 1.7; }
+    .setting-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; border-top: 1px solid var(--line); padding: 12px 0; font-size: 10px; color: #c4cfdb; }
+    .setting-row:first-of-type { margin-top: 10px; }
+    .switch { width: 31px; height: 17px; border: 0; border-radius: 20px; background: #394657; position: relative; cursor: pointer; }
+    .switch:after { content: ""; position: absolute; width: 11px; height: 11px; border-radius: 50%; background: white; left: 3px; top: 3px; transition: transform .18s; }
+    .switch.on { background: #3985eb; }
+    .switch.on:after { transform: translateX(14px); }
+    .toast { position: fixed; z-index: 10; right: 22px; bottom: 22px; border: 1px solid #33485c; border-radius: 9px; background: #172432; color: #e5eef8; padding: 11px 15px; font-size: 11px; box-shadow: 0 10px 35px #0008; opacity: 0; transform: translateY(8px); transition: .2s; pointer-events: none; }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .modal-backdrop { position: fixed; z-index: 9; inset: 0; display: none; place-items: center; padding: 20px; background: #03070bc9; backdrop-filter: blur(5px); }
+    .modal-backdrop.open { display: grid; }
+    .modal { width: min(460px, 100%); max-height: calc(100vh - 40px); overflow-y: auto; border: 1px solid #2b3b4d; border-radius: 13px; background: #121c28; padding: 20px; box-shadow: 0 20px 70px #0009; }
+    .modal-head { display: flex; align-items: center; justify-content: space-between; }
+    .modal h2 { margin: 0; font-size: 15px; }
+    .modal p { color: var(--muted); font-size: 11px; }
+    .snapshot-image { width: 100%; border-radius: 8px; border: 1px solid #314253; display: block; }
+    .mobile-menu { display: none; }
+    @media (max-width: 1100px) {
+      .sidebar { width: 210px; }
+      .main { margin-left: 210px; }
+      .content { padding: 24px 22px 34px; }
+      .topbar { padding: 0 22px; }
+      .overview-strip { gap: 9px; }
+      .metric { padding: 13px; }
+      .live-layout { grid-template-columns: minmax(0, 1.5fr) minmax(245px, .85fr); }
+    }
+    @media (max-width: 820px) {
+      .sidebar { width: 62px; padding: 17px 9px; }
+      .brand { padding: 0 3px 25px; }
+      .brand-copy, .nav-label, .nav button .nav-text, .nav-badge, .network-card, .operator-copy { display: none; }
+      .nav { gap: 8px; }
+      .nav button { justify-content: center; padding: 11px 0; }
+      .nav svg { width: 19px; height: 19px; }
+      .operator { justify-content: center; padding: 14px 0 0; }
+      .main { margin-left: 62px; }
+      .live-layout { grid-template-columns: 1fr; }
+      .side-stack { grid-template-columns: 1fr 1fr; grid-template-rows: auto; }
+      .lower-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 580px) {
+      .topbar { height: 54px; padding: 0 14px; }
+      .crumb { font-size: 10px; }
+      .date-display { display: none; }
+      .top-actions { gap: 8px; }
+      .content { padding: 22px 13px 30px; }
+      .page-heading { margin-bottom: 17px; }
+      h1 { font-size: 19px; }
+      .subtitle { max-width: 300px; font-size: 10px; }
+      .heading-actions .button:not(.primary) { display: none; }
+      .heading-actions .button { padding: 8px 9px; font-size: 10px; }
+      .overview-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; margin-bottom: 13px; }
+      .metric { min-height: 94px; padding: 11px; }
+      .metric-value { font-size: 22px; }
+      .metric-label { font-size: 10px; }
+      .metric-note { font-size: 9px; }
+      .live-layout { gap: 12px; }
+      .panel-header { padding: 12px; }
+      .camera-select { max-width: 155px; font-size: 9px; }
+      .video { min-height: 255px; height: 62vw; }
+      .track { width: 12%; }
+      .track.t2 { width: 15%; }
+      .video-controls .button { font-size: 0; padding: 7px; }
+      .video-controls .button svg { width: 15px; height: 15px; }
+      .stream-stats { gap: 10px; font-size: 8px; padding: 9px; }
+      .side-stack { grid-template-columns: 1fr; gap: 12px; }
+      .lower-grid { margin-top: 12px; gap: 12px; }
+      .summary-row { gap: 7px; }
+      .summary-box { padding: 11px; }
+      .summary-box span { font-size: 9px; }
+      .summary-box strong { font-size: 18px; }
+      .settings-grid, .signal-page-grid { grid-template-columns: 1fr; }
+      .toolbar { align-items: stretch; flex-direction: column; }
+      .search { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark" id="brandIcon"></div>
+        <div class="brand-copy"><div class="brand-name">Traffic Eye</div><div class="brand-sub">City operations</div></div>
+      </div>
+      <div class="nav-label">Workspace</div>
+      <nav class="nav" aria-label="Main navigation">
+        <button class="active" data-page="overview"><span class="nav-icon"></span><span class="nav-text">Overview</span></button>
+        <button data-page="violations"><span class="nav-icon"></span><span class="nav-text">Violations</span><span class="nav-badge" id="navViolationCount">02</span></button>
+        <button data-page="plates"><span class="nav-icon"></span><span class="nav-text">ANPR Registry</span></button>
+        <button data-page="signals"><span class="nav-icon"></span><span class="nav-text">Signal Control</span></button>
+        <button data-page="settings"><span class="nav-icon"></span><span class="nav-text">System settings</span></button>
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="network-card">
+          <div class="network-title">Network status <span style="color:var(--green);font-size:9px">● LIVE</span></div>
+          <div class="network-detail">All systems operational</div>
+          <div class="network-foot"><span>Camera uptime</span><strong style="color:#dce6f1">99.8%</strong></div>
+        </div>
+        <div class="operator"><div class="avatar">AS</div><div class="operator-copy"><div class="operator-name">Aarav Sharma</div><div class="operator-role">Control room operator</div></div></div>
+      </div>
+    </aside>
+    <main class="main">
+      <header class="topbar">
+        <div class="crumb">City Operations <span style="padding:0 7px;color:#566477">/</span> <strong id="crumbTitle">Overview</strong></div>
+        <div class="top-actions">
+          <span class="date-display" id="topDate"></span>
+          <button class="icon-button" id="alertButton" aria-label="Notifications"><span class="top-notification-icon"></span><i class="notification-dot"></i></button>
+          <div class="top-divider"></div>
+          <div class="avatar" style="width:29px;height:29px">AS</div>
+        </div>
+      </header>
+      <div class="content">
+        <section class="subpage active" id="page-overview"></section>
+        <section class="subpage" id="page-violations"></section>
+        <section class="subpage" id="page-plates"></section>
+        <section class="subpage" id="page-signals"></section>
+        <section class="subpage" id="page-settings"></section>
+      </div>
+    </main>
+  </div>
+  <div class="toast" id="toast" role="status"></div>
+  <div class="modal-backdrop" id="snapshotModal" role="dialog" aria-modal="true" aria-label="Camera snapshot">
+    <div class="modal">
+      <div class="modal-head"><h2>Snapshot captured</h2><button class="icon-button" id="closeModal" aria-label="Close">×</button></div>
+      <p id="snapshotCaption">The current camera frame has been archived.</p>
+      <img class="snapshot-image" src="assets/cctv-road.jpg" alt="Captured traffic camera frame">
+      <div style="display:flex;justify-content:flex-end;margin-top:14px"><button class="button primary" id="doneModal">Done</button></div>
+    </div>
+  </div>
+  <script>
+    const iconPaths = {
+      logo: '<path d="M12 3v18m-6-9h12M5 8h14l2 4-2 4H5l-2-4 2-4Z"/><circle cx="7" cy="12" r="1"/><circle cx="17" cy="12" r="1"/>',
+      grid: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
+      warning: '<path d="m10.3 3.9-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.7-3.1l-8-14a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4m0 4h.01"/>',
+      plate: '<rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 10h.01M10 10h.01M13 10h.01M16 10h1m-10 4h10"/>',
+      signal: '<circle cx="12" cy="6" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="18" r="2"/><path d="M12 1v3m0 16v3"/>',
+      settings: '<path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z"/><path d="m19.4 15 .1.1a1.7 1.7 0 0 1-2.4 2.4l-.1-.1a1.7 1.7 0 0 0-2.9 1.2v.2a1.7 1.7 0 0 1-3.4 0v-.2a1.7 1.7 0 0 0-2.9-1.2l-.1.1a1.7 1.7 0 0 1-2.4-2.4l.1-.1a1.7 1.7 0 0 0-1.2-2.9H4a1.7 1.7 0 0 1 0-3.4h.2A1.7 1.7 0 0 0 5.4 5.8l-.1-.1a1.7 1.7 0 0 1 2.4-2.4l.1.1a1.7 1.7 0 0 0 2.9-1.2V2a1.7 1.7 0 0 1 3.4 0v.2a1.7 1.7 0 0 0 2.9 1.2l.1-.1a1.7 1.7 0 0 1 2.4 2.4l-.1.1a1.7 1.7 0 0 0 1.2 2.9h.2a1.7 1.7 0 0 1 0 3.4h-.2a1.7 1.7 0 0 0-1.2 2.9Z"/>',
+      camera: '<path d="M14 4h-4l-2 3H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2-3Z"/><circle cx="12" cy="13" r="3"/>',
+      car: '<path d="m5 11 1.5-4.5A2 2 0 0 1 8.4 5h7.2a2 2 0 0 1 1.9 1.5L19 11"/><path d="M3 11h18v7H3zm3 7v2m12-2v2M6 14h.01M18 14h.01"/>',
+      speed: '<path d="M12 14 8 9"/><path d="M20.2 16A9 9 0 1 0 3.8 16"/><path d="M12 14h.01"/>',
+      check: '<path d="m5 12 4 4L19 6"/>',
+      search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>',
+      bell: '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9m-8 12h4"/>',
+      play: '<path d="m8 5 12 7-12 7z"/>',
+      pause: '<path d="M8 5h3v14H8zm5 0h3v14h-3z"/>',
+      download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4m4-5 5 5 5-5m-5 5V3"/>',
+      bolt: '<path d="m13 2-3 8h7l-6 12 1-9H5l8-11Z"/>',
+      clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+      close: '<path d="m18 6-12 12M6 6l12 12"/>'
+    };
+    const icon = (name, size = 16) => `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${iconPaths[name] || iconPaths.grid}</svg>`;
+    document.getElementById("brandIcon").innerHTML = icon("logo", 22);
+    document.querySelector(".top-notification-icon").innerHTML = icon("bell", 17);
+    document.querySelectorAll(".nav button").forEach(button => {
+      const page = button.dataset.page;
+      button.querySelector(".nav-icon").innerHTML = icon(({overview:"grid",violations:"warning",plates:"plate",signals:"signal",settings:"settings"})[page], 17);
+    });
+
+    const cameras = [
+      { id: "cam1", name: "CAM-01 · MG Road Junction", location: "CBD Center Lane", limit: 50, fps: 30, density: "Medium" },
+      { id: "cam2", name: "CAM-02 · Express Highway North", location: "Sector 14 Corridor", limit: 80, fps: 60, density: "Low" },
+      { id: "cam3", name: "CAM-03 · Central Metro Ring", location: "Gate 4 Intersection", limit: 40, fps: 30, density: "High" },
+      { id: "cam4", name: "CAM-04 · River Bridge Approach", location: "South Toll Gate", limit: 60, fps: 30, density: "Medium" }
+    ];
+    let selectedCamera = cameras[0], streaming = true, emergency = false, signalSeconds = 24;
+    let vehicleCount = 142, totalViolations = 12, totalPlates = 118;
+    let violationFilter = "All", plateSearch = "";
+    const violations = [
+      {id:"VIO-102", time:"09:45:33", camera:"CAM-02 · Express Highway", plate:"MH-12-PQ-4519", type:"Overspeeding", cls:"speed", speed:"108 km/h", fine:1500, status:"Pending Review", statusCls:"pending"},
+      {id:"VIO-104", time:"09:51:19", camera:"CAM-03 · Central Metro", plate:"KA-05-AA-3124", type:"Wrong Way", cls:"wrong", speed:"28 km/h", fine:2500, status:"Pending Review", statusCls:"pending"},
+      {id:"VIO-101", time:"09:42:15", camera:"CAM-01 · MG Road", plate:"KA-01-MJ-8821", type:"Red Light", cls:"signal", speed:"54 km/h", fine:2000, status:"Challan Issued", statusCls:"issued"},
+      {id:"VIO-103", time:"09:48:02", camera:"CAM-01 · MG Road", plate:"DL-03-TC-9102", type:"No Helmet", cls:"helmet", speed:"38 km/h", fine:1000, status:"Challan Issued", statusCls:"issued"}
+    ];
+    const plates = [
+      {plate:"KA-01-MJ-8821",vehicle:"Sedan / Car",time:"09:42:15",camera:"CAM-01",owner:"R. Verma",state:"Karnataka",score:98},
+      {plate:"MH-12-PQ-4519",vehicle:"Sedan / Car",time:"09:45:33",camera:"CAM-02",owner:"A. Sharma",state:"Maharashtra",score:96},
+      {plate:"DL-03-TC-9102",vehicle:"Motorcycle",time:"09:48:02",camera:"CAM-01",owner:"K. Nair",state:"Delhi",score:94},
+      {plate:"KA-05-AA-3124",vehicle:"Auto Rickshaw",time:"09:51:19",camera:"CAM-03",owner:"V. Singh",state:"Karnataka",score:97},
+      {plate:"TS-09-FB-7744",vehicle:"Transit Bus",time:"09:52:40",camera:"CAM-02",owner:"State Transport Corp",state:"Telangana",score:99},
+      {plate:"KA-03-X-9901",vehicle:"Sedan / Car",time:"09:53:11",camera:"CAM-01",owner:"S. Patil",state:"Karnataka",score:95,flagged:true}
+    ];
+    const titles = {overview:"Overview",violations:"Violations",plates:"ANPR Registry",signals:"Signal Control",settings:"System settings"};
+    const timestamp = () => new Date().toLocaleTimeString("en-GB", {hour12:false});
+    const heading = (eyebrow, title, subtitle, button = "") => `<div class="page-heading"><div><div class="eyebrow">${eyebrow}</div><h1>${title}</h1><p class="subtitle">${subtitle}</p></div>${button ? `<div class="heading-actions">${button}</div>` : ""}</div>`;
+    const tableRows = (items, view = "violations") => items.map(v => `<tr>
+      <td>${v.time}</td><td class="plate">${v.plate}</td><td>${view === "violations" ? `<span class="type-pill ${v.cls}">${v.type}</span>` : v.vehicle}</td>
+      <td>${view === "violations" ? v.camera : v.owner}</td>
+      <td>${view === "violations" ? `${v.speed}` : `${v.score}%`}</td>
+      <td>${view === "violations" ? `<span class="status-pill ${v.statusCls}">${v.status}</span>` : v.flagged ? `<span class="status-pill flagged">Flagged</span>` : `<span class="status-pill paid">Verified</span>`}</td>
+      <td>${view === "violations" ? `<button class="table-action" data-action="challan" data-id="${v.id}">${v.statusCls === "pending" ? "Issue challan" : "Review"}</button>` : `<button class="table-action" data-action="plate" data-plate="${v.plate}">Details</button>`}</td>
+      </tr>`).join("");
+    function overviewPage() {
+      const metrics = [
+        ["Vehicles detected","142","+12.8%","vs. previous hour","car","#64a5ff"],
+        ["Traffic density",selectedCamera.density,"Live","Flow · "+selectedCamera.limit+" km/h zone","speed","#f4b45d"],
+        ["Violations today","12","+3 today","2 awaiting review","warning","#ff6d79"],
+        ["Plates recognized","118","+8.2%","ANPR confidence 96.4%","plate","#58d6e5"]
+      ];
+      return `${heading("LIVE NETWORK OVERVIEW","Traffic monitoring overview","Real-time intelligence across your city's road network.",
+        `<button class="button" data-action="export">${icon("download")} Export report</button><button class="button primary" data-action="add-camera">${icon("camera")} Camera feeds</button>`)}
+        <div class="overview-strip">${metrics.map(([label,value,change,note,ic,color])=>`<article class="metric" style="--accent:${color};--tint:${color}"><div class="metric-top"><span class="metric-label">${label}</span><span class="metric-icon">${icon(ic)}</span></div><div class="metric-bottom"><strong class="metric-value">${value}</strong><span class="metric-change">${change}</span></div><div class="metric-note">${note}</div></article>`).join("")}</div>
+        <div class="live-layout">
+          <section class="panel">
+            <div class="panel-header"><div><div class="panel-title">${icon("camera")} Live traffic monitoring</div><div class="panel-subtitle">AI-powered vehicle detection · optical feed</div></div><select class="camera-select" id="cameraSelect" aria-label="Select camera">${cameras.map(c=>`<option value="${c.id}" ${c.id===selectedCamera.id?"selected":""}>${c.name}</option>`).join("")}</select></div>
+            <div class="video ${streaming?"streaming":"paused"}" id="videoFeed">
+              <img class="video-image" src="assets/cctv-road.jpg" alt="Live camera view of a city intersection">
+              <div class="video-grid"></div><div class="track"></div><div class="track t2"></div><div class="track t3"></div>
+              <div class="video-top"><span class="live-tag"><i class="online-dot"></i>${streaming?"LIVE FEED":"STREAM PAUSED"}</span><span class="video-code">${selectedCamera.id.toUpperCase()} · ${selectedCamera.fps} FPS · HD</span></div>
+              <div class="video-bottom"><div><div class="feed-info">${selectedCamera.name.replace(" · "," — ")}</div><div class="feed-location">${selectedCamera.location} &nbsp;·&nbsp; Speed limit ${selectedCamera.limit} km/h</div></div>
+                <div class="video-controls"><button class="button" data-action="snapshot" aria-label="Capture snapshot">${icon("camera")} Snapshot</button><button class="button" data-action="stream" aria-label="Toggle stream">${icon(streaming?"pause":"play")} ${streaming?"Pause":"Resume"}</button></div></div>
+            </div>
+            <div class="stream-stats"><span>DETECTED<strong>05 vehicles</strong></span><span>AI CONFIDENCE<strong>96.8%</strong></span><span>LATENCY<strong>42 ms</strong></span><span style="margin-left:auto;color:var(--green)"><i class="online-dot"></i>Stable</span></div>
+          </section>
+          <div class="side-stack">
+            <section class="panel signal-card"><div class="panel-header"><div><div class="panel-title">${icon("signal")} Signal control</div><div class="panel-subtitle">Adaptive junction phasing</div></div><button class="icon-button" data-goto="signals" aria-label="Open signal control">${icon("grid")}</button></div>
+              <div class="signal-body"><div class="junction">MG Road &amp; 4th Avenue</div><div class="junction-sub">Junction 01 · Central District</div>
+                <div class="phase-row"><div class="signal-light"><i class="lamp red"></i><i class="lamp amber"></i><i class="lamp green active"></i></div><div><div class="phase-label">Main avenue · Green</div><div class="phase-caption">Cross street · Red</div></div><span class="countdown" id="signalCount">${signalSeconds}</span></div>
+                <button class="button emergency-button ${emergency?"active":""}" data-action="emergency">${icon("bolt")} ${emergency?"Emergency corridor active":"Activate emergency corridor"}</button>
+              </div>
+            </section>
+            <section class="panel"><div class="panel-header"><div><div class="panel-title">${icon("clock")} Recent activity</div><div class="panel-subtitle">Latest events from your cameras</div></div><a class="view-all" data-goto="violations">View all</a></div>
+              <div class="activity-list"><div class="activity-item"><span class="activity-icon">${icon("speed")}</span><div><div class="activity-title">Speed limit exceeded</div><div class="activity-meta">MH-12-PQ-4519 · CAM-02</div></div><span class="activity-time">2m ago</span></div>
+              <div class="activity-item"><span class="activity-icon blue">${icon("plate")}</span><div><div class="activity-title">Plate recognized</div><div class="activity-meta">KA-01-MJ-8821 · 98% match</div></div><span class="activity-time">5m ago</span></div>
+              <div class="activity-item"><span class="activity-icon">${icon("warning")}</span><div><div class="activity-title">Wrong-way entry detected</div><div class="activity-meta">KA-05-AA-3124 · CAM-03</div></div><span class="activity-time">9m ago</span></div></div>
+            </section>
+          </div>
+        </div>
+        <div class="lower-grid">
+          <section class="panel"><div class="panel-header"><div><div class="panel-title">${icon("warning")} Recent violations</div><div class="panel-subtitle">AI-detected incidents requiring attention</div></div><a class="view-all" data-goto="violations">All violations →</a></div>
+            <div class="table-wrap"><table><thead><tr><th>Time</th><th>Vehicle plate</th><th>Violation</th><th>Camera</th><th>Speed</th><th>Status</th><th></th></tr></thead><tbody>${tableRows(violations.slice(0,3))}</tbody></table></div>
+          </section>
+          <section class="panel"><div class="panel-header"><div><div class="panel-title">${icon("speed")} Traffic flow</div><div class="panel-subtitle">Vehicle volume · last 12 hours</div></div><span class="status-pill pending">Medium</span></div>
+            <div class="density"><div class="density-header"><div><div class="density-title">City-wide vehicle throughput</div><div class="density-sub">Live network average</div></div><div class="density-value">↑ 8.4%</div></div>
+              <div class="density-number">1,284 <small>vehicles / hr</small></div>
+              <div class="bar-chart">${[30,44,35,53,40,60,46,72,54,64,49,80,58,71,62,91,70,82,66,96,75,85,69,78].map((v,i)=>`<i style="height:${v}%;opacity:${i>17?1:.58}"></i>`).join("")}</div>
+              <div class="chart-labels"><span>06:00</span><span>09:00</span><span>12:00</span><span>15:00</span><span>18:00</span></div>
+              <div class="density-footer"><span>Peak congestion</span><strong>17:30 – 18:15</strong></div>
+            </div>
+          </section>
+        </div>`;
+    }
+    function violationsPage() {
+      const filtered = violationFilter === "All" ? violations : violations.filter(v=>v.type===violationFilter);
+      return `${heading("INCIDENT MANAGEMENT","Traffic violations","Review detections, issue e-challans, and track resolution status.",`<button class="button" data-action="export">${icon("download")} Export records</button>`)}
+        <div class="summary-row"><div class="summary-box"><span>Total recorded</span><strong>${violations.length}</strong></div><div class="summary-box"><span>Pending review</span><strong style="color:var(--amber)">${violations.filter(v=>v.statusCls==="pending").length}</strong></div><div class="summary-box"><span>Fines recorded</span><strong style="color:var(--red)">₹${violations.reduce((a,v)=>a+v.fine,0).toLocaleString("en-IN")}</strong></div></div>
+        <section class="panel"><div class="filters">${["All","Overspeeding","Red Light","No Helmet","Wrong Way"].map(f=>`<button class="filter-chip ${violationFilter===f?"active":""}" data-filter="${f}">${f}${f==="All"?` (${violations.length})`:""}</button>`).join("")}</div>
+          <div class="table-wrap"><table><thead><tr><th>Time</th><th>Vehicle plate</th><th>Violation</th><th>Camera</th><th>Recorded speed</th><th>Status</th><th>Action</th></tr></thead><tbody>${filtered.length?tableRows(filtered):`<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:30px">No violations in this category.</td></tr>`}</tbody></table></div></section>`;
+    }
+    function platesPage() {
+      const filtered = plates.filter(p=>`${p.plate} ${p.owner} ${p.state}`.toLowerCase().includes(plateSearch.toLowerCase()));
+      return `${heading("VEHICLE INTELLIGENCE","ANPR registry","Automatic number plate recognition and vehicle lookup.",`<button class="button" data-action="export">${icon("download")} Export registry</button>`)}
+        <div class="summary-row"><div class="summary-box"><span>Plates scanned today</span><strong style="color:var(--blue)">${totalPlates}</strong></div><div class="summary-box"><span>Average OCR confidence</span><strong style="color:var(--cyan)">96.4%</strong></div><div class="summary-box"><span>Flagged vehicles</span><strong style="color:var(--red)">${plates.filter(p=>p.flagged).length}</strong></div></div>
+        <section class="panel"><div class="toolbar"><p>Recently identified vehicles</p><input class="search" id="plateSearch" type="search" placeholder="Search plate, registered owner, or state…" value="${plateSearch}"></div>
+          <div class="table-wrap"><table><thead><tr><th>Time</th><th>Plate number</th><th>Vehicle type</th><th>Registered owner</th><th>OCR confidence</th><th>Registry status</th><th></th></tr></thead><tbody>${filtered.length?tableRows(filtered,"plates"):`<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:30px">No matching registration records.</td></tr>`}</tbody></table></div></section>`;
+    }
+    function signalsPage() {
+      return `${heading("NETWORK MANAGEMENT","Signal control","Adaptive phasing and emergency corridor management.")}
+        <div class="signal-page-grid"><section class="panel"><div class="panel-header"><div><div class="panel-title">${icon("signal")} MG Road &amp; 4th Avenue</div><div class="panel-subtitle">Junction 01 · Central District · Adaptive mode</div></div><span class="status-pill paid">ONLINE</span></div>
+          <div class="signal-map"><div class="road-h"></div><div class="road-v"></div><div class="intersection"><div class="signal-light"><i class="lamp red"></i><i class="lamp amber"></i><i class="lamp green active"></i></div></div></div>
+          <div class="signal-body"><div class="phase-row"><div class="signal-light"><i class="lamp red"></i><i class="lamp amber"></i><i class="lamp green active"></i></div><div><div class="phase-label">Main avenue · Green</div><div class="phase-caption">Cross street · Red</div></div><span class="countdown" id="signalCountLarge">${signalSeconds}</span></div>
+          <button class="button emergency-button ${emergency?"active":""}" data-action="emergency">${icon("bolt")} ${emergency?"Emergency corridor active":"Activate emergency corridor"}</button></div></section>
+          <section class="panel corridor-panel"><h3>Emergency green corridor</h3><p>Prioritize an emergency response vehicle by holding green signals along its route. Cross traffic will remain red until the corridor is cleared.</p>
+            <div class="setting-row"><span>Corridor override</span><button class="switch ${emergency?"on":""}" data-action="emergency" aria-label="Toggle emergency corridor"></button></div>
+            <div class="setting-row"><span>Signal mode</span><strong style="color:var(--green)">Adaptive AI</strong></div><div class="setting-row"><span>Next phase change</span><strong id="phaseTimer">${signalSeconds}s</strong></div>
+            <div class="setting-row"><span>Vehicles queued</span><strong>12</strong></div></section></div>`;
+    }
+    function settingsPage() {
+      return `${heading("PREFERENCES","System settings","Manage your monitoring workspace and notification preferences.")}
+        <div class="settings-grid"><section class="panel settings-card"><h3>Monitoring preferences</h3><p>Configure how your city network detects and reports incidents.</p>
+          <div class="setting-row"><span>Real-time camera analysis</span><button class="switch on" data-action="setting"></button></div>
+          <div class="setting-row"><span>Automatic plate recognition</span><button class="switch on" data-action="setting"></button></div>
+          <div class="setting-row"><span>Violation alert notifications</span><button class="switch on" data-action="setting"></button></div>
+          <div class="setting-row"><span>Night mode enhancement</span><button class="switch" data-action="setting"></button></div></section>
+          <section class="panel settings-card"><h3>System health</h3><p>Current operational status for connected monitoring services.</p>
+            <div class="setting-row"><span>Camera network</span><strong style="color:var(--green)">All 4 online</strong></div><div class="setting-row"><span>AI detection engine</span><strong style="color:var(--green)">Operational</strong></div><div class="setting-row"><span>ANPR database sync</span><strong style="color:var(--green)">Synced just now</strong></div><div class="setting-row"><span>Last system check</span><strong id="healthTime">${timestamp()}</strong></div></section></div>`;
+    }
+    const renderers = {overview:overviewPage,violations:violationsPage,plates:platesPage,signals:signalsPage,settings:settingsPage};
+    let activePage = "overview";
+    function render(page = activePage) {
+      activePage = page;
+      Object.keys(renderers).forEach(key=>{
+        document.getElementById(`page-${key}`).classList.toggle("active",key===page);
+        document.querySelector(`.nav button[data-page="${key}"]`).classList.toggle("active",key===page);
+      });
+      document.getElementById(`page-${page}`).innerHTML = renderers[page]();
+      document.getElementById("crumbTitle").textContent = titles[page];
+      document.getElementById("navViolationCount").textContent = String(violations.filter(v=>v.statusCls==="pending").length).padStart(2,"0");
+    }
+    let toastTimer;
+    function toast(message) {
+      const el = document.getElementById("toast"); el.textContent = message; el.classList.add("show");
+      clearTimeout(toastTimer); toastTimer = setTimeout(()=>el.classList.remove("show"),2500);
+    }
+    function saveCsv() {
+      const rows = [["Time","Plate","Violation","Camera","Speed","Fine","Status"],...violations.map(v=>[v.time,v.plate,v.type,v.camera,v.speed,v.fine,v.status])];
+      const csv = rows.map(row=>row.map(cell=>`"${String(cell).replaceAll('"','""')}"`).join(",")).join("\r\n");
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(new Blob([csv],{type:"text/csv"})); link.download = "traffic-violations.csv"; link.click();
+      URL.revokeObjectURL(link.href); toast("Report exported as CSV");
+    }
+    document.addEventListener("click", event => {
+      const nav = event.target.closest("[data-page]");
+      if (nav) { render(nav.dataset.page); return; }
+      const goto = event.target.closest("[data-goto]");
+      if (goto) { render(goto.dataset.goto); return; }
+      const filter = event.target.closest("[data-filter]");
+      if (filter) { violationFilter = filter.dataset.filter; render("violations"); return; }
+      const action = event.target.closest("[data-action]");
+      if (!action) return;
+      switch (action.dataset.action) {
+        case "stream": streaming = !streaming; render("overview"); toast(streaming?"Camera stream resumed":"Camera stream paused"); break;
+        case "snapshot":
+          document.getElementById("snapshotCaption").textContent = `${selectedCamera.name} · ${timestamp()} · 5 vehicles detected`;
+          document.getElementById("snapshotModal").classList.add("open"); break;
+        case "emergency":
+          emergency = !emergency; render(activePage); toast(emergency?"Emergency green corridor activated":"Emergency corridor deactivated"); break;
+        case "challan": {
+          const record = violations.find(v=>v.id===action.dataset.id);
+          if (record && record.statusCls==="pending") { record.status="Challan Issued"; record.statusCls="issued"; totalViolations++; render(activePage); toast(`E-challan issued for ${record.plate}`); }
+          else toast(`Opening ${record?.id || "violation"} record`); break;
+        }
+        case "plate": toast(`Vehicle registry record · ${action.dataset.plate}`); break;
+        case "export": saveCsv(); break;
+        case "add-camera": toast("All 4 city camera feeds are connected"); break;
+        case "setting": action.classList.toggle("on"); toast("Preference updated"); break;
+      }
+    });
+    document.addEventListener("change",event=>{
+      if(event.target.id==="cameraSelect") { selectedCamera=cameras.find(c=>c.id===event.target.value)||cameras[0]; render("overview"); }
+    });
+    document.addEventListener("input",event=>{
+      if(event.target.id==="plateSearch") {
+        const position=event.target.selectionStart; plateSearch=event.target.value; render("plates");
+        const input=document.getElementById("plateSearch"); input.focus(); input.setSelectionRange(position,position);
+      }
+    });
+    function closeModal(){ document.getElementById("snapshotModal").classList.remove("open"); }
+    document.getElementById("closeModal").addEventListener("click",closeModal);
+    document.getElementById("doneModal").addEventListener("click",closeModal);
+    document.getElementById("snapshotModal").addEventListener("click",e=>{if(e.target.id==="snapshotModal")closeModal();});
+    document.getElementById("alertButton").addEventListener("click",()=>{render("violations");toast("Showing incidents that need attention");});
+    document.addEventListener("keydown",e=>{if(e.key==="Escape")closeModal();});
+    function updateClock() {
+      const now = new Date();
+      document.getElementById("topDate").textContent = now.toLocaleString("en-US",{weekday:"short",month:"short",day:"numeric"})+" · "+now.toLocaleTimeString("en-GB",{hour12:false});
+      const counter=document.getElementById("signalCount"), large=document.getElementById("signalCountLarge"), phase=document.getElementById("phaseTimer");
+      if(streaming && !emergency) signalSeconds=signalSeconds<=1?30:signalSeconds-1;
+      [counter,large].filter(Boolean).forEach(el=>el.textContent=signalSeconds);
+      if(phase)phase.textContent=`${signalSeconds}s`;
+    }
+    render(); updateClock(); setInterval(updateClock,1000);
+    setInterval(()=>{ if(streaming){ vehicleCount++; totalPlates++; } },12000);
+  </script>
+</body>
+</html>
